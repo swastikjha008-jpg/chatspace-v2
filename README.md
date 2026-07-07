@@ -1,88 +1,162 @@
-# ChatSpace 💬
+# ChatSpace
 
-A small, real-time chat app — rooms, no accounts, no database. Built to practice a
-Turborepo monorepo setup: a Next.js frontend talking to a standalone WebSocket server,
-sharing a small design-system package between them.
+![Next.js](https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript&logoColor=white)
+![Turborepo](https://img.shields.io/badge/Turborepo-Monorepo-EF4444?style=for-the-badge&logo=turborepo&logoColor=white)
+![WebSocket](https://img.shields.io/badge/WebSocket-Realtime-22c55e?style=for-the-badge)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)
 
-Not trying to be a real product — just a clean example of the pattern.
+A realtime, room-based chat app — the v2 rebuild of my earlier [Simple Chat App](https://github.com/swastikjha008-jpg/Simple-chat-app),
+this time as a proper Turborepo monorepo with a Next.js frontend, a standalone WebSocket
+server, and a shared UI package. Same idea, cleaner architecture, nicer face.
 
-## What's inside
+Create a room, share the code, chat instantly with anyone who joins it.
 
+## Live Flow
+
+```text
+Land on site -> auto-generated room code -> copy & share (or paste a friend's code)
+-> enter name -> join room -> realtime chat, live online list
 ```
-chatspace/
-  apps/
-    web/         — Next.js 14 (App Router) frontend
-    ws-server/   — standalone WebSocket server (rooms + broadcast)
-  packages/
-    ui/          — shared components used by web
+
+## Features
+
+- Random room code generated the moment you land on the site
+- Regenerate (`↻`) a new code, or paste a friend's code to join their room instead
+- Realtime chat over WebSockets, scoped per room
+- Live online users list per room, with colored initials avatars
+- Own messages vs. others' messages are visually distinct (cyan vs. purple)
+- Glassmorphic chat card, WebGL plasma background visible through it
+- Copy room code button, one-click leave
+- Responsive: sidebar becomes a top bar on mobile
+- Two independently deployable services (frontend + WS server)
+
+## Tech Stack
+
+| Part          | Tech                                   |
+| ------------- | --------------------------------------- |
+| Frontend      | Next.js 14 (App Router) + TypeScript    |
+| Styling       | Tailwind CSS + Framer Motion            |
+| Realtime      | WebSocket (`ws`), room-based broadcast  |
+| Background    | WebGL plasma shader (`ogl`)             |
+| Monorepo      | Turborepo                               |
+| Deploy        | Render (both services) or Vercel (web)  |
+
+## Project Structure
+
+```text
+.
+├── apps/
+│   ├── web/                 — Next.js frontend
+│   │   ├── app/
+│   │   │   ├── page.tsx             — landing / join screen
+│   │   │   └── chat/[roomId]/       — chat room
+│   │   ├── components/              — JoinForm, ChatWindow, ChatSidebar, MessageBubble
+│   │   └── lib/                     — useWebSocket hook, room code + avatar helpers
+│   └── ws-server/           — standalone WebSocket server
+│       └── src/index.ts             — room + presence broadcast logic
+├── packages/
+│   └── ui/                  — shared design-system components
+│       ├── PlasmaWave.tsx           — WebGL background
+│       ├── Dock.tsx                 — floating pill navbar
+│       ├── BioluminescentGrid.tsx   — cursor-glow message container
+│       └── Button.tsx
+├── turbo.json
+├── package.json
+└── README.md
 ```
 
-### `packages/ui`
+## Run Locally
 
-Each component lives in its own file:
-
-- `PlasmaWave.tsx` — the animated WebGL background (built with `ogl`)
-- `Dock.tsx` — the floating pill navbar
-- `BioluminescentGrid.tsx` — message container with a cursor-tracking glow
-- `Button.tsx` — shared button, colors synced to the PlasmaWave purple/cyan palette
-- `utils.ts` — the `cn()` class-merge helper
-
-### `apps/web`
-
-- `/` — enter a name + room ID, join instantly
-- `/chat/[roomId]` — the chat room itself, connects to `ws-server` over a WebSocket
-- `components/` — chat-specific pieces (`ChatWindow`, `MessageBubble`, `JoinForm`) that
-  are built on top of `packages/ui`, but aren't generic enough to belong there
-- `lib/useWebSocket.ts` — the hook that owns the socket connection and message state
-
-### `apps/ws-server`
-
-Minimal `ws`-based server. Tracks connected clients per room in memory and broadcasts
-any message to everyone else in that room. No persistence — refresh the server and
-history is gone. That's intentional; this is meant to be the simple version.
-
-## Running it locally
-
-From the repo root:
+Install dependencies from the repo root:
 
 ```bash
 npm install
+```
+
+Start everything (frontend + WS server together, via Turborepo):
+
+```bash
 npm run dev
 ```
 
-This starts both apps together via Turborepo:
-- `web` on http://localhost:3000
-- `ws-server` on ws://localhost:8080
+Open:
 
-Open two browser tabs, join the same room ID with different names, and chat.
-
-## Environment variables
-
-`apps/web` reads `NEXT_PUBLIC_WS_URL` to know where the WebSocket server lives. Locally
-it defaults to `ws://localhost:8080`, so no `.env` file is required for local dev.
-
-For deployment, create `apps/web/.env.local` (or set it in your hosting provider):
-
+```text
+http://localhost:3000
 ```
+
+The WebSocket server runs alongside it on `ws://localhost:8080` — no separate terminal
+needed, Turborepo runs both `dev` scripts concurrently.
+
+## How To Use
+
+1. Land on the site — a room code is already generated for you.
+2. Enter your name.
+3. Copy the code and send it to a friend, or paste theirs into the second field to join them.
+4. Click **Enter chat**.
+5. Start chatting in realtime — you'll both show up in the Online list.
+
+## Deploy
+
+This needs two separate services, since a WebSocket server can't run on a static host.
+
+**`apps/web`** → Vercel or Render, as a standard Next.js app:
+
+```text
+Build Command: npm install && npm run build
+Start Command: npm run start
+```
+
+**`apps/ws-server`** → Render, as a Node Web Service:
+
+```text
+Build Command: npm install && npm run build
+Start Command: npm run start
+```
+
+Once `ws-server` has a live URL, set this in `apps/web`'s environment (use `wss://`, not
+`ws://`, once it's on a real domain):
+
+```text
 NEXT_PUBLIC_WS_URL=wss://your-ws-server-domain.com
 ```
 
-## Deploying
+## Git Commands
 
-These are two separate deployable services:
+```bash
+git add .
+git commit -m "ChatSpace v2 — Turborepo, glassmorphic UI, presence tracking"
+git push origin main
+```
 
-- **`apps/web`** → deploy to Vercel or Render as a standard Next.js app
-  (build: `npm install && npm run build`, start: `npm run start`)
-- **`apps/ws-server`** → deploy to Render as a Node web service
-  (build: `npm install && npm run build`, start: `npm run start`)
+Do not commit:
 
-Once `ws-server` is deployed, update `NEXT_PUBLIC_WS_URL` in `web`'s environment to point
-at it (use `wss://`, not `ws://`, once it's on a real domain with HTTPS).
+```text
+node_modules/
+.next/
+dist/
+.turbo/
+*.tsbuildinfo
+```
 
-## Stack
+(all already handled by `.gitignore`)
 
-Next.js · TypeScript · Tailwind CSS · Framer Motion · `ws` · `ogl` · Turborepo
+## Scripts
 
-## License
+| Command         | Description                                  |
+| --------------- | --------------------------------------------- |
+| `npm run dev`   | Runs `web` + `ws-server` together (Turborepo)  |
+| `npm run build` | Builds both apps for production                |
+| `npm run lint`  | Lints all workspaces                            |
 
-MIT
+## Notes
+
+- No accounts, no database — refresh the `ws-server` and room history is gone. That's intentional.
+- Both people must use the exact same room code to land in the same room.
+- If the chat says "connecting..." and never resolves, check that `ws-server` is actually running and that `NEXT_PUBLIC_WS_URL` points at it correctly.
+
+## v1
+
+The original React + Vite + plain WebSocket version is still up here:
+[Simple Chat App](https://github.com/swastikjha008-jpg/Simple-chat-app)
